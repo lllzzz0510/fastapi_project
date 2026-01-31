@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timedelta
+from time import sleep
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,3 +52,17 @@ async def authenticate_user(db:AsyncSession,username:str,password:str):
     if not security.verify_password(password,user.password):
         return None
     return user
+
+async def get_user_by_token(db:AsyncSession,token:str):
+    query=select(UserToken).where(UserToken.token==token)
+    res=await db.execute(query)
+    db_token=res.scalar_one_or_none()
+
+    if not db_token or db_token.expires_at < datetime.now():
+        return None
+
+    query=select(User).where(User.id == db_token.user_id)
+    res=await db.execute(query)
+    return res.scalar_one_or_none()
+
+
